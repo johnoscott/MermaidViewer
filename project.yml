@@ -1,0 +1,101 @@
+name: MermaidViewer
+options:
+  bundleIdPrefix: com.mermaid
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+  generateEmptyDirectories: true
+
+settings:
+  SWIFT_VERSION: "5.9"
+  MARKETING_VERSION: "1.0.0"
+  CURRENT_PROJECT_VERSION: "1"
+  ENABLE_HARDENED_RUNTIME: true
+
+targets:
+  MermaidViewer:
+    type: application
+    platform: macOS
+    sources:
+      - path: MermaidViewer
+        excludes:
+          - "**/*.plist"
+          - "**/*.entitlements"
+      - path: MermaidViewer/Resources/mermaid.min.js
+        buildPhase: resources
+        type: file
+      - path: MermaidViewer/DocumentIcon.icns
+        buildPhase: resources
+        type: file
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.mermaid.viewer
+      INFOPLIST_FILE: MermaidViewer/Info.plist
+      CODE_SIGN_ENTITLEMENTS: MermaidViewer/MermaidViewer.entitlements
+      CODE_SIGN_STYLE: Automatic
+      DEVELOPMENT_TEAM: ""
+      ENABLE_APP_SANDBOX: true
+      COMBINE_HIDPI_IMAGES: true
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - target: MermaidQuickLook
+        embed: true
+        codeSign: true
+      - target: MermaidThumbnail
+        embed: true
+        codeSign: true
+
+  MermaidThumbnail:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: MermaidThumbnail
+        excludes:
+          - "**/*.plist"
+          - "**/*.entitlements"
+      - path: MermaidThumbnail/Resources/mermaid.min.js
+        buildPhase: resources
+        type: file
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.mermaid.viewer.thumbnail
+      INFOPLIST_FILE: MermaidThumbnail/Info.plist
+      CODE_SIGN_ENTITLEMENTS: MermaidThumbnail/MermaidThumbnail.entitlements
+      CODE_SIGN_STYLE: Automatic
+      DEVELOPMENT_TEAM: ""
+      SKIP_INSTALL: true
+      ENABLE_APP_SANDBOX: true
+      LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
+
+  MermaidQuickLook:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: MermaidQuickLook
+        excludes:
+          - "**/*.plist"
+          - "**/*.entitlements"
+      - path: MermaidQuickLook/Resources/mermaid.min.js
+        buildPhase: resources
+        type: file
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.mermaid.viewer.quicklook
+      INFOPLIST_FILE: MermaidQuickLook/Info.plist
+      CODE_SIGN_ENTITLEMENTS: MermaidQuickLook/MermaidQuickLook.entitlements
+      CODE_SIGN_STYLE: Automatic
+      DEVELOPMENT_TEAM: ""
+      SKIP_INSTALL: true
+      ENABLE_APP_SANDBOX: true
+      LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
+
+schemes:
+  MermaidViewer:
+    build:
+      targets:
+        MermaidViewer: all
+        MermaidQuickLook: all
+        MermaidThumbnail: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+    archive:
+      config: Release
