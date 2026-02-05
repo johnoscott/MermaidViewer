@@ -22,12 +22,12 @@ generate:
 # Build the project
 build: generate
 	@echo "==> Building $(SCHEME)..."
-	xcodebuild -scheme $(SCHEME) -configuration $(CONFIG) build
+	xcodebuild -scheme $(SCHEME) -configuration $(CONFIG) -allowProvisioningUpdates build
 
 # Build release version
 release: generate
 	@echo "==> Building $(SCHEME) (Release)..."
-	xcodebuild -scheme $(SCHEME) -configuration Release build
+	xcodebuild -scheme $(SCHEME) -configuration Release -allowProvisioningUpdates build
 
 # Install to /Applications
 install:
