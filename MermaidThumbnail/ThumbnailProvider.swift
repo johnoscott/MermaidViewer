@@ -47,117 +47,129 @@ class ThumbnailProvider: QLThumbnailProvider {
     private func drawThumbnail(context: CGContext, size: CGSize, code: String) {
         let w = size.width
         let h = size.height
-        let scale = min(w, h) / 100  // Scale factor for proportional drawing
 
-        // Draw document background with subtle gradient effect
+        // Padding for the document shape
+        let padding = min(w, h) * 0.08
+        let docW = w - padding * 2
+        let docH = h - padding * 2
+        let docX = padding
+        let docY = padding
+
+        // Fold corner size
+        let foldSize = docW * 0.18
+
+        // Draw shadow
+        context.saveGState()
+        context.setShadow(offset: CGSize(width: 0, height: -2), blur: 8, color: NSColor.black.withAlphaComponent(0.3).cgColor)
+
+        // Document shape path (with folded corner)
         context.setFillColor(NSColor.white.cgColor)
-        context.fill(CGRect(origin: .zero, size: size))
-
-        // Draw subtle document shadow/border
-        context.setFillColor(NSColor(white: 0.95, alpha: 1).cgColor)
-        context.fill(CGRect(x: 0, y: 0, width: w, height: h * 0.08))
-
-        // Draw document fold corner
-        let foldSize = w * 0.15
-        context.setFillColor(NSColor(white: 0.9, alpha: 1).cgColor)
-        context.move(to: CGPoint(x: w - foldSize, y: h))
-        context.addLine(to: CGPoint(x: w, y: h))
-        context.addLine(to: CGPoint(x: w, y: h - foldSize))
+        context.move(to: CGPoint(x: docX, y: docY))
+        context.addLine(to: CGPoint(x: docX, y: docY + docH))
+        context.addLine(to: CGPoint(x: docX + docW - foldSize, y: docY + docH))
+        context.addLine(to: CGPoint(x: docX + docW, y: docY + docH - foldSize))
+        context.addLine(to: CGPoint(x: docX + docW, y: docY))
         context.closePath()
         context.fillPath()
+        context.restoreGState()
 
-        // Draw fold line
-        context.setStrokeColor(NSColor(white: 0.8, alpha: 1).cgColor)
-        context.setLineWidth(scale * 0.5)
-        context.move(to: CGPoint(x: w - foldSize, y: h))
-        context.addLine(to: CGPoint(x: w, y: h - foldSize))
+        // Document border
+        context.setStrokeColor(NSColor(white: 0.75, alpha: 1).cgColor)
+        context.setLineWidth(1)
+        context.move(to: CGPoint(x: docX, y: docY))
+        context.addLine(to: CGPoint(x: docX, y: docY + docH))
+        context.addLine(to: CGPoint(x: docX + docW - foldSize, y: docY + docH))
+        context.addLine(to: CGPoint(x: docX + docW, y: docY + docH - foldSize))
+        context.addLine(to: CGPoint(x: docX + docW, y: docY))
+        context.closePath()
         context.strokePath()
 
-        // Colors for the flowchart
-        let nodeColor = NSColor(red: 0, green: 0.71, blue: 0.85, alpha: 1)  // Teal/cyan
-        let nodeColorLight = nodeColor.withAlphaComponent(0.15)
-        let lineColor = nodeColor.withAlphaComponent(0.7)
-
-        // Draw flowchart nodes
-        let nodeRadius = scale * 4
-        let nodeHeight = scale * 10
-        let nodeWidth = scale * 22
-
-        // Top node (rounded rect)
-        let topNode = CGRect(x: w * 0.5 - nodeWidth/2, y: h * 0.75, width: nodeWidth, height: nodeHeight)
-        context.setFillColor(nodeColor.cgColor)
-        let topPath = CGPath(roundedRect: topNode, cornerWidth: nodeRadius, cornerHeight: nodeRadius, transform: nil)
-        context.addPath(topPath)
-        context.fillPath()
-
-        // Diamond (decision node) in middle
-        let diamondCenter = CGPoint(x: w * 0.5, y: h * 0.52)
-        let diamondSize = scale * 12
-        context.setFillColor(nodeColor.withAlphaComponent(0.9).cgColor)
-        context.move(to: CGPoint(x: diamondCenter.x, y: diamondCenter.y + diamondSize))
-        context.addLine(to: CGPoint(x: diamondCenter.x + diamondSize, y: diamondCenter.y))
-        context.addLine(to: CGPoint(x: diamondCenter.x, y: diamondCenter.y - diamondSize))
-        context.addLine(to: CGPoint(x: diamondCenter.x - diamondSize, y: diamondCenter.y))
+        // Folded corner
+        context.setFillColor(NSColor(white: 0.92, alpha: 1).cgColor)
+        context.move(to: CGPoint(x: docX + docW - foldSize, y: docY + docH))
+        context.addLine(to: CGPoint(x: docX + docW - foldSize, y: docY + docH - foldSize))
+        context.addLine(to: CGPoint(x: docX + docW, y: docY + docH - foldSize))
         context.closePath()
         context.fillPath()
 
-        // Bottom left node
-        let leftNode = CGRect(x: w * 0.15, y: h * 0.22, width: nodeWidth * 0.8, height: nodeHeight * 0.8)
+        // Fold corner border
+        context.setStrokeColor(NSColor(white: 0.75, alpha: 1).cgColor)
+        context.move(to: CGPoint(x: docX + docW - foldSize, y: docY + docH))
+        context.addLine(to: CGPoint(x: docX + docW - foldSize, y: docY + docH - foldSize))
+        context.addLine(to: CGPoint(x: docX + docW, y: docY + docH - foldSize))
+        context.strokePath()
+
+        // Content area
+        let contentX = docX + docW * 0.12
+        let contentY = docY + docH * 0.1
+        let contentW = docW * 0.76
+        let contentH = docH * 0.7
+
+        // Colors for flowchart
+        let nodeColor = NSColor(red: 0, green: 0.71, blue: 0.85, alpha: 1)
+        let lineColor = nodeColor.withAlphaComponent(0.8)
+
+        // Scale for nodes
+        let nodeW = contentW * 0.35
+        let nodeH = contentH * 0.12
+        let nodeR = nodeH * 0.3
+
+        // Top node
+        let topNode = CGRect(x: contentX + (contentW - nodeW) / 2,
+                             y: contentY + contentH * 0.78,
+                             width: nodeW, height: nodeH)
+        context.setFillColor(nodeColor.cgColor)
+        context.addPath(CGPath(roundedRect: topNode, cornerWidth: nodeR, cornerHeight: nodeR, transform: nil))
+        context.fillPath()
+
+        // Diamond
+        let diamondCenterX = contentX + contentW / 2
+        let diamondCenterY = contentY + contentH * 0.55
+        let diamondSize = contentH * 0.14
+        context.setFillColor(nodeColor.withAlphaComponent(0.9).cgColor)
+        context.move(to: CGPoint(x: diamondCenterX, y: diamondCenterY + diamondSize))
+        context.addLine(to: CGPoint(x: diamondCenterX + diamondSize, y: diamondCenterY))
+        context.addLine(to: CGPoint(x: diamondCenterX, y: diamondCenterY - diamondSize))
+        context.addLine(to: CGPoint(x: diamondCenterX - diamondSize, y: diamondCenterY))
+        context.closePath()
+        context.fillPath()
+
+        // Bottom nodes
+        let bottomNodeW = nodeW * 0.8
+        let bottomNodeH = nodeH * 0.9
+        let leftNode = CGRect(x: contentX + contentW * 0.05,
+                              y: contentY + contentH * 0.15,
+                              width: bottomNodeW, height: bottomNodeH)
+        let rightNode = CGRect(x: contentX + contentW - bottomNodeW - contentW * 0.05,
+                               y: contentY + contentH * 0.15,
+                               width: bottomNodeW, height: bottomNodeH)
+
         context.setFillColor(nodeColor.withAlphaComponent(0.85).cgColor)
-        let leftPath = CGPath(roundedRect: leftNode, cornerWidth: nodeRadius, cornerHeight: nodeRadius, transform: nil)
-        context.addPath(leftPath)
+        context.addPath(CGPath(roundedRect: leftNode, cornerWidth: nodeR, cornerHeight: nodeR, transform: nil))
+        context.fillPath()
+        context.addPath(CGPath(roundedRect: rightNode, cornerWidth: nodeR, cornerHeight: nodeR, transform: nil))
         context.fillPath()
 
-        // Bottom right node
-        let rightNode = CGRect(x: w * 0.85 - nodeWidth * 0.8, y: h * 0.22, width: nodeWidth * 0.8, height: nodeHeight * 0.8)
-        context.addPath(CGPath(roundedRect: rightNode, cornerWidth: nodeRadius, cornerHeight: nodeRadius, transform: nil))
-        context.fillPath()
-
-        // Draw connecting lines
+        // Connecting lines
         context.setStrokeColor(lineColor.cgColor)
-        context.setLineWidth(scale * 1.5)
+        context.setLineWidth(max(1.5, contentW * 0.02))
         context.setLineCap(.round)
 
         // Top to diamond
-        context.move(to: CGPoint(x: w * 0.5, y: topNode.minY))
-        context.addLine(to: CGPoint(x: w * 0.5, y: diamondCenter.y + diamondSize))
+        context.move(to: CGPoint(x: topNode.midX, y: topNode.minY))
+        context.addLine(to: CGPoint(x: diamondCenterX, y: diamondCenterY + diamondSize))
         context.strokePath()
 
         // Diamond to left
-        context.move(to: CGPoint(x: diamondCenter.x - diamondSize, y: diamondCenter.y))
-        context.addLine(to: CGPoint(x: leftNode.midX, y: diamondCenter.y))
+        context.move(to: CGPoint(x: diamondCenterX - diamondSize, y: diamondCenterY))
+        context.addLine(to: CGPoint(x: leftNode.midX, y: diamondCenterY))
         context.addLine(to: CGPoint(x: leftNode.midX, y: leftNode.maxY))
         context.strokePath()
 
         // Diamond to right
-        context.move(to: CGPoint(x: diamondCenter.x + diamondSize, y: diamondCenter.y))
-        context.addLine(to: CGPoint(x: rightNode.midX, y: diamondCenter.y))
+        context.move(to: CGPoint(x: diamondCenterX + diamondSize, y: diamondCenterY))
+        context.addLine(to: CGPoint(x: rightNode.midX, y: diamondCenterY))
         context.addLine(to: CGPoint(x: rightNode.midX, y: rightNode.maxY))
         context.strokePath()
-
-        // Draw small arrow heads
-        let arrowSize = scale * 3
-        context.setFillColor(lineColor.cgColor)
-
-        // Arrow to left node
-        context.move(to: CGPoint(x: leftNode.midX, y: leftNode.maxY))
-        context.addLine(to: CGPoint(x: leftNode.midX - arrowSize, y: leftNode.maxY + arrowSize * 1.5))
-        context.addLine(to: CGPoint(x: leftNode.midX + arrowSize, y: leftNode.maxY + arrowSize * 1.5))
-        context.closePath()
-        context.fillPath()
-
-        // Arrow to right node
-        context.move(to: CGPoint(x: rightNode.midX, y: rightNode.maxY))
-        context.addLine(to: CGPoint(x: rightNode.midX - arrowSize, y: rightNode.maxY + arrowSize * 1.5))
-        context.addLine(to: CGPoint(x: rightNode.midX + arrowSize, y: rightNode.maxY + arrowSize * 1.5))
-        context.closePath()
-        context.fillPath()
-
-        // Arrow to diamond
-        context.move(to: CGPoint(x: w * 0.5, y: diamondCenter.y + diamondSize))
-        context.addLine(to: CGPoint(x: w * 0.5 - arrowSize, y: diamondCenter.y + diamondSize + arrowSize * 1.5))
-        context.addLine(to: CGPoint(x: w * 0.5 + arrowSize, y: diamondCenter.y + diamondSize + arrowSize * 1.5))
-        context.closePath()
-        context.fillPath()
     }
 }

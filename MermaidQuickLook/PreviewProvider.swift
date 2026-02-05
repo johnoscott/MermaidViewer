@@ -139,17 +139,20 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
                     display: flex;
                     justify-content: center;
                     align-items: center;
-                    padding: 20px;
-                    transition: background-color 0.3s;
+                    padding: 16px;
+                    overflow: hidden;
                 }
                 body.light { background: #f5f5f5; }
                 body.dark { background: #1e1e1e; }
                 #diagram {
                     border-radius: 12px;
-                    padding: 24px;
-                    max-width: 100%;
-                    overflow: auto;
-                    transition: all 0.3s;
+                    padding: 20px;
+                    width: calc(100% - 32px);
+                    height: calc(100% - 32px);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    overflow: hidden;
                 }
                 body.light #diagram {
                     background: white;
@@ -169,6 +172,17 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
                 }
                 .mermaid {
                     font-family: 'trebuchet ms', verdana, arial, sans-serif;
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                }
+                .mermaid svg {
+                    max-width: 100%;
+                    max-height: 100%;
+                    width: auto;
+                    height: auto;
                 }
                 \(sizingCSS)
             </style>
@@ -184,7 +198,6 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
                 const isDark = \(darkModeJS);
                 document.body.className = isDark ? 'dark' : 'light';
 
-                // Determine theme: use user setting, but if 'default', auto-switch based on dark mode
                 let selectedTheme = '\(mermaidTheme)';
                 if (selectedTheme === 'default' && isDark) {
                     selectedTheme = 'dark';
@@ -192,12 +205,34 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
 
                 try {
                     mermaid.initialize({
-                        startOnLoad: true,
+                        startOnLoad: false,
                         theme: selectedTheme,
                         securityLevel: 'loose',
-                        flowchart: { useMaxWidth: true, htmlLabels: true },
-                        sequence: { useMaxWidth: true },
-                        gantt: { useMaxWidth: true }
+                        flowchart: { useMaxWidth: false, htmlLabels: true },
+                        sequence: { useMaxWidth: false },
+                        gantt: { useMaxWidth: false },
+                        er: { useMaxWidth: false }
+                    });
+
+                    mermaid.run().then(() => {
+                        // After render, scale SVG to fit container
+                        const svg = document.querySelector('.mermaid svg');
+                        if (svg) {
+                            const container = document.getElementById('diagram');
+                            const containerW = container.clientWidth - 40;
+                            const containerH = container.clientHeight - 40;
+                            const svgW = svg.viewBox.baseVal.width || svg.getBBox().width;
+                            const svgH = svg.viewBox.baseVal.height || svg.getBBox().height;
+
+                            if (svgW > 0 && svgH > 0) {
+                                const scaleX = containerW / svgW;
+                                const scaleY = containerH / svgH;
+                                const scale = Math.min(scaleX, scaleY, 2.0); // Cap at 2x zoom
+
+                                svg.style.width = (svgW * scale) + 'px';
+                                svg.style.height = (svgH * scale) + 'px';
+                            }
+                        }
                     });
                 } catch (e) {
                     document.getElementById('diagram').innerHTML = '<div id="error">Error: ' + e.message + '</div>';
