@@ -55,8 +55,10 @@ macOS Quick Look extension for previewing Mermaid diagram files (.mmd, .mermaid)
 - Requires Apple Developer Program membership ($99/year)
 - Cannot work around this for local development
 
-### Conclusion: Settings Sharing Is Not Possible
-Without proper code signing with App Groups, there is **NO workaround** for sharing settings between the main app and the Quick Look extension. The extension will always use default settings.
+### Conclusion: Settings Sharing Requires App Groups
+Without proper code signing with App Groups, there is **NO workaround** for sharing settings between the main app and the Quick Look extension.
+
+**With App Groups configured correctly, settings sharing WORKS!**
 
 ---
 
@@ -131,25 +133,35 @@ settings:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Quick Look Preview | Working | Default settings only |
-| Settings UI | Working | Preview works, Apply doesn't transfer to Finder |
-| Theme Selection | Partial | Works in app preview, not in Finder |
-| Dark Mode | Partial | Works in app preview, not in Finder |
+| Quick Look Preview | ✅ Working | Renders Mermaid diagrams |
+| Settings UI | ✅ Working | Live preview + Apply to Finder |
+| Theme Selection | ✅ Working | Syncs to Finder via App Groups |
+| Dark Mode | ✅ Working | Syncs to Finder via App Groups |
 | Document Icons | Partial | Shows as small badge, not full icon |
 | Thumbnails | Placeholder | Shows flowchart icon, not actual diagram |
 
 ---
 
-## Future Improvements (Require Code Signing)
+## What Finally Worked (App Groups Setup)
 
-1. **App Groups for Settings Sharing**
-   - Requires Apple Developer Program membership
-   - Would allow settings to transfer to Finder Quick Look
+1. **Apple Developer Account** - Required for App Groups
+2. **Create App Group**: `group.com.roundrect.mermaidviewer`
+3. **Create App IDs** with App Groups capability:
+   - `com.roundrect.mermaidviewer`
+   - `com.roundrect.mermaidviewer.quicklook`
+   - `com.roundrect.mermaidviewer.thumbnail`
+4. **Set DEVELOPMENT_TEAM** in project.yml
+5. **Add `-allowProvisioningUpdates`** to xcodebuild
+6. **Register device** via Xcode (automatic on first build)
 
-2. **Thumbnail Extension Enhancement**
+---
+
+## Future Improvements
+
+1. **Thumbnail Extension Enhancement**
    - Render actual Mermaid diagrams as file thumbnails
    - Would provide full custom document icons
 
-3. **App Store Distribution**
-   - Would require all sandbox restrictions
-   - App Groups would work with proper signing
+2. **App Store Distribution**
+   - All sandbox restrictions already in place
+   - App Groups configured and working

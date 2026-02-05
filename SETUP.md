@@ -1,6 +1,26 @@
 # MermaidViewer Setup Guide
 
 This guide walks you through configuring your Apple Developer account for App Groups, which enables settings sharing between the main app and Quick Look extension.
+## TILD
+
+```
+Summary of identifiers:                                                                                                   
+  ┌────────────┬───────────────────────────────────────┐
+  │ Component  │               Bundle ID               │                                                                    
+  ├────────────┼───────────────────────────────────────┤                                                                  
+  │ Main App   │ com.roundrect.mermaidviewer           │          
+  ├────────────┼───────────────────────────────────────┤
+  │ Quick Look │ com.roundrect.mermaidviewer.quicklook │
+  ├────────────┼───────────────────────────────────────┤
+  │ Thumbnail  │ com.roundrect.mermaidviewer.thumbnail │
+  ├────────────┼───────────────────────────────────────┤
+  │ App Group  │ group.com.roundrect.mermaidviewer     │
+  └────────────┴───────────────────────────────────────┘
+  See SETUP.md for the complete step-by-step guide to configure your Apple Developer account.
+
+  Once you've created the App Group and App IDs in the portal, just add your Team ID to project.yml and run make dev.
+
+```
 
 ## Prerequisites
 
