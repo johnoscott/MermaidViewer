@@ -32,7 +32,7 @@ targets:
       INFOPLIST_FILE: MermaidViewer/Info.plist
       CODE_SIGN_ENTITLEMENTS: MermaidViewer/MermaidViewer.entitlements
       CODE_SIGN_STYLE: Automatic
-      DEVELOPMENT_TEAM: ""
+      DEVELOPMENT_TEAM: "KJ8QMLWB97"
       ENABLE_APP_SANDBOX: true
       COMBINE_HIDPI_IMAGES: true
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -60,7 +60,7 @@ targets:
       INFOPLIST_FILE: MermaidThumbnail/Info.plist
       CODE_SIGN_ENTITLEMENTS: MermaidThumbnail/MermaidThumbnail.entitlements
       CODE_SIGN_STYLE: Automatic
-      DEVELOPMENT_TEAM: ""
+      DEVELOPMENT_TEAM: "KJ8QMLWB97"
       SKIP_INSTALL: true
       ENABLE_APP_SANDBOX: true
       LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
@@ -81,7 +81,7 @@ targets:
       INFOPLIST_FILE: MermaidQuickLook/Info.plist
       CODE_SIGN_ENTITLEMENTS: MermaidQuickLook/MermaidQuickLook.entitlements
       CODE_SIGN_STYLE: Automatic
-      DEVELOPMENT_TEAM: ""
+      DEVELOPMENT_TEAM: "KJ8QMLWB97"
       SKIP_INSTALL: true
       ENABLE_APP_SANDBOX: true
       LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
