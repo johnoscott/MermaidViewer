@@ -17,20 +17,20 @@ A macOS Quick Look extension for previewing Mermaid diagram files (.mmd, .mermai
 
 1. Go to [Apple Developer Portal](https://developer.apple.com/account/resources/identifiers/list/applicationGroup)
 2. Click **+** to create a new App Group
-3. Enter identifier: `group.com.mermaid.viewer`
+3. Enter identifier: `group.com.roundrect.mermaidviewer`
 4. Click **Continue** and **Register**
 
 ### 2. Create/Update App IDs
 
 Create or update these App IDs with the App Group capability:
 
-- `com.mermaid.viewer` (main app)
-- `com.mermaid.viewer.quicklook` (Quick Look extension)
-- `com.mermaid.viewer.thumbnail` (Thumbnail extension)
+- `com.roundrect.mermaidviewer` (main app)
+- `com.roundrect.mermaidviewer.quicklook` (Quick Look extension)
+- `com.roundrect.mermaidviewer.thumbnail` (Thumbnail extension)
 
 For each App ID:
 1. Enable **App Groups** capability
-2. Select `group.com.mermaid.viewer`
+2. Select `group.com.roundrect.mermaidviewer`
 
 ### 3. Configure Team ID
 

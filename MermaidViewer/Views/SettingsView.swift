@@ -3,16 +3,16 @@ import WebKit
 
 struct SettingsView: View {
     // Quick Look Settings (stored in shared UserDefaults for extension access)
-    @AppStorage("ql.theme", store: UserDefaults(suiteName: "group.com.mermaid.viewer"))
+    @AppStorage("ql.theme", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
     private var qlTheme: String = "default"
 
-    @AppStorage("ql.sizing", store: UserDefaults(suiteName: "group.com.mermaid.viewer"))
+    @AppStorage("ql.sizing", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
     private var qlSizing: String = "fit"
 
-    @AppStorage("ql.darkMode", store: UserDefaults(suiteName: "group.com.mermaid.viewer"))
+    @AppStorage("ql.darkMode", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
     private var qlDarkMode: String = "system"  // "system", "light", "dark"
 
-    @AppStorage("ql.backgroundColor", store: UserDefaults(suiteName: "group.com.mermaid.viewer"))
+    @AppStorage("ql.backgroundColor", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
     private var qlBackgroundColor: String = "#f5f5f5"
 
     @Environment(\.colorScheme) private var systemColorScheme

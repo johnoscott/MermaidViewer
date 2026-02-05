@@ -8,7 +8,7 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
     private static let supportedExtensions = ["mmd", "mermaid", "md", "markdown"]
 
     // Shared settings via App Group
-    private static let sharedDefaults = UserDefaults(suiteName: "group.com.mermaid.viewer")
+    private static let sharedDefaults = UserDefaults(suiteName: "group.com.roundrect.mermaidviewer")
 
     // Bundled mermaid.js - loaded from extension bundle
     private static let mermaidJS: String = {

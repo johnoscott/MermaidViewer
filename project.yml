@@ -28,7 +28,7 @@ targets:
         buildPhase: resources
         type: file
     settings:
-      PRODUCT_BUNDLE_IDENTIFIER: com.mermaid.viewer
+      PRODUCT_BUNDLE_IDENTIFIER: com.roundrect.mermaidviewer
       INFOPLIST_FILE: MermaidViewer/Info.plist
       CODE_SIGN_ENTITLEMENTS: MermaidViewer/MermaidViewer.entitlements
       CODE_SIGN_STYLE: Automatic
@@ -56,7 +56,7 @@ targets:
         buildPhase: resources
         type: file
     settings:
-      PRODUCT_BUNDLE_IDENTIFIER: com.mermaid.viewer.thumbnail
+      PRODUCT_BUNDLE_IDENTIFIER: com.roundrect.mermaidviewer.thumbnail
       INFOPLIST_FILE: MermaidThumbnail/Info.plist
       CODE_SIGN_ENTITLEMENTS: MermaidThumbnail/MermaidThumbnail.entitlements
       CODE_SIGN_STYLE: Automatic
@@ -77,7 +77,7 @@ targets:
         buildPhase: resources
         type: file
     settings:
-      PRODUCT_BUNDLE_IDENTIFIER: com.mermaid.viewer.quicklook
+      PRODUCT_BUNDLE_IDENTIFIER: com.roundrect.mermaidviewer.quicklook
       INFOPLIST_FILE: MermaidQuickLook/Info.plist
       CODE_SIGN_ENTITLEMENTS: MermaidQuickLook/MermaidQuickLook.entitlements
       CODE_SIGN_STYLE: Automatic
