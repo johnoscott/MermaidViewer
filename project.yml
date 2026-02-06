@@ -21,12 +21,16 @@ targets:
         excludes:
           - "**/*.plist"
           - "**/*.entitlements"
+      - path: Shared
       - path: MermaidViewer/Resources/mermaid.min.js
         buildPhase: resources
         type: file
       - path: MermaidViewer/DocumentIcon.icns
         buildPhase: resources
         type: file
+      - path: MermaidQuickLook/Resources/icons
+        buildPhase: resources
+        type: folder
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.roundrect.mermaidviewer
       INFOPLIST_FILE: MermaidViewer/Info.plist
@@ -73,9 +77,13 @@ targets:
         excludes:
           - "**/*.plist"
           - "**/*.entitlements"
+      - path: Shared
       - path: MermaidQuickLook/Resources/mermaid.min.js
         buildPhase: resources
         type: file
+      - path: MermaidQuickLook/Resources/icons
+        buildPhase: resources
+        type: folder
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.roundrect.mermaidviewer.quicklook
       INFOPLIST_FILE: MermaidQuickLook/Info.plist

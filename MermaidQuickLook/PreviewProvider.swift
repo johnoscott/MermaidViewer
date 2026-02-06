@@ -10,18 +10,8 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
     // Shared settings via App Group
     private static let sharedDefaults = UserDefaults(suiteName: "group.com.roundrect.mermaidviewer")
 
-    // Bundled mermaid.js - loaded from extension bundle
-    private static let mermaidJS: String = {
-        let bundle = Bundle(for: PreviewProvider.self)
-
-        if let url = bundle.url(forResource: "mermaid.min", withExtension: "js"),
-           let js = try? String(contentsOf: url, encoding: .utf8) {
-            return js
-        }
-
-        // Fallback - return a minimal error message
-        return "console.error('mermaid.min.js not found');"
-    }()
+    // Shared renderer - initialized with extension bundle
+    private static let renderer = MermaidRenderer(bundle: Bundle(for: PreviewProvider.self))
 
     // MARK: - Settings
 
@@ -35,6 +25,22 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
 
     private var darkModeSetting: String {
         Self.sharedDefaults?.string(forKey: "ql.darkMode") ?? "system"
+    }
+
+    private var showDebug: Bool {
+        Self.sharedDefaults?.bool(forKey: "ql.showDebug") ?? false
+    }
+
+    private var backgroundMode: String {
+        Self.sharedDefaults?.string(forKey: "ql.backgroundMode") ?? "transparent"
+    }
+
+    private var backgroundColor: String {
+        Self.sharedDefaults?.string(forKey: "ql.backgroundColor") ?? "#f5f5f5"
+    }
+
+    private var mouseMode: String {
+        Self.sharedDefaults?.string(forKey: "ql.mouseMode") ?? "pan"
     }
 
     func providePreview(for request: QLFilePreviewRequest) async throws -> QLPreviewReply {
@@ -55,13 +61,26 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
             mermaidCode = content
         }
 
-        let html = generatePreviewHTML(code: mermaidCode, filename: fileURL.lastPathComponent)
+        // Build render options from settings
+        var options = MermaidRenderOptions()
+        options.theme = theme
+        options.darkModeSetting = darkModeSetting
+        options.sizing = sizing
+        options.showToolbar = true
+        options.showDebug = showDebug
+        options.backgroundMode = backgroundMode
+        options.backgroundColor = backgroundColor
+        options.mouseMode = mouseMode
+        options.debugLabel = "Build 13 | Theme: \(theme) | Dark: \(darkModeSetting) | Size: \(sizing) | BG: \(backgroundMode) | Mouse: \(mouseMode)"
+
+        let html = Self.renderer.generateHTML(code: mermaidCode, options: options)
 
         guard let htmlData = html.data(using: .utf8) else {
             throw NSError(domain: "MermaidQuickLook", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to generate HTML"])
         }
 
-        let contentSize = CGSize(width: 800, height: 600)
+        // Use a large content size - the HTML will scale the diagram to fit
+        let contentSize = CGSize(width: 1200, height: 900)
 
         return QLPreviewReply(dataOfContentType: .html, contentSize: contentSize) { reply in
             reply.title = fileURL.lastPathComponent
@@ -90,156 +109,5 @@ class PreviewProvider: QLPreviewProvider, QLPreviewingController {
         }
 
         return mermaidBlocks.first ?? ""
-    }
-
-    private func generatePreviewHTML(code: String, filename: String) -> String {
-        let escapedCode = code
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-
-        // Sizing CSS based on settings
-        let sizingCSS: String
-        switch sizing {
-        case "expandVertical":
-            sizingCSS = "#diagram { height: 100vh; } .mermaid svg { height: 100%; width: auto; }"
-        case "expandHorizontal":
-            sizingCSS = "#diagram { width: 100%; } .mermaid svg { width: 100%; height: auto; }"
-        case "original":
-            sizingCSS = ""
-        default: // fit
-            sizingCSS = "#diagram { max-width: 100%; max-height: 100%; } .mermaid svg { max-width: 100%; max-height: 100%; }"
-        }
-
-        // Dark mode handling
-        let darkModeJS: String
-        switch darkModeSetting {
-        case "light":
-            darkModeJS = "false"
-        case "dark":
-            darkModeJS = "true"
-        default: // system
-            darkModeJS = "window.matchMedia('(prefers-color-scheme: dark)').matches"
-        }
-
-        // Theme for mermaid - use dark theme if dark mode is forced, or match system
-        let mermaidTheme = theme == "default" ? "default" : theme
-
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                html, body {
-                    width: 100%;
-                    height: 100%;
-                    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    padding: 16px;
-                    overflow: hidden;
-                }
-                body.light { background: #f5f5f5; }
-                body.dark { background: #1e1e1e; }
-                #diagram {
-                    border-radius: 12px;
-                    padding: 20px;
-                    width: calc(100% - 32px);
-                    height: calc(100% - 32px);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    overflow: hidden;
-                }
-                body.light #diagram {
-                    background: white;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-                }
-                body.dark #diagram {
-                    background: #2d2d2d;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-                }
-                #error {
-                    color: #ff6b6b;
-                    font-family: ui-monospace, monospace;
-                    white-space: pre-wrap;
-                    padding: 20px;
-                    background: rgba(255,107,107,0.1);
-                    border-radius: 8px;
-                }
-                .mermaid {
-                    font-family: 'trebuchet ms', verdana, arial, sans-serif;
-                    width: 100%;
-                    height: 100%;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                }
-                .mermaid svg {
-                    max-width: 100%;
-                    max-height: 100%;
-                    width: auto;
-                    height: auto;
-                }
-                \(sizingCSS)
-            </style>
-            <script>
-            \(Self.mermaidJS)
-            </script>
-        </head>
-        <body>
-            <div id="diagram">
-                <pre class="mermaid">\(escapedCode)</pre>
-            </div>
-            <script>
-                const isDark = \(darkModeJS);
-                document.body.className = isDark ? 'dark' : 'light';
-
-                let selectedTheme = '\(mermaidTheme)';
-                if (selectedTheme === 'default' && isDark) {
-                    selectedTheme = 'dark';
-                }
-
-                try {
-                    mermaid.initialize({
-                        startOnLoad: false,
-                        theme: selectedTheme,
-                        securityLevel: 'loose',
-                        flowchart: { useMaxWidth: false, htmlLabels: true },
-                        sequence: { useMaxWidth: false },
-                        gantt: { useMaxWidth: false },
-                        er: { useMaxWidth: false }
-                    });
-
-                    mermaid.run().then(() => {
-                        // After render, scale SVG to fit container
-                        const svg = document.querySelector('.mermaid svg');
-                        if (svg) {
-                            const container = document.getElementById('diagram');
-                            const containerW = container.clientWidth - 40;
-                            const containerH = container.clientHeight - 40;
-                            const svgW = svg.viewBox.baseVal.width || svg.getBBox().width;
-                            const svgH = svg.viewBox.baseVal.height || svg.getBBox().height;
-
-                            if (svgW > 0 && svgH > 0) {
-                                const scaleX = containerW / svgW;
-                                const scaleY = containerH / svgH;
-                                const scale = Math.min(scaleX, scaleY, 2.0); // Cap at 2x zoom
-
-                                svg.style.width = (svgW * scale) + 'px';
-                                svg.style.height = (svgH * scale) + 'px';
-                            }
-                        }
-                    });
-                } catch (e) {
-                    document.getElementById('diagram').innerHTML = '<div id="error">Error: ' + e.message + '</div>';
-                }
-            </script>
-        </body>
-        </html>
-        """
     }
 }

@@ -9,7 +9,7 @@ APP_PATH = /Applications/$(APP_NAME)
 DERIVED_DATA = ~/Library/Developer/Xcode/DerivedData
 
 .PHONY: all build install uninstall clean generate register unregister \
-        clear-cache restart-finder refresh test help open kill
+        clear-cache restart-finder refresh test help open kill register-extension
 
 # Default target
 all: build install register
@@ -148,8 +148,15 @@ reinstall: uninstall deep-clean build install register refresh
 	@echo "==> Full reinstall complete"
 
 # Development cycle - quick rebuild and install
-dev: build install restart-quicklook
+dev: build install register-extension restart-quicklook
 	@echo "==> Development build installed"
+
+# Force re-register the Quick Look extension
+register-extension:
+	@echo "==> Registering Quick Look extension..."
+	@pluginkit -e use -i com.roundrect.mermaidviewer.quicklook 2>/dev/null || true
+	@pluginkit -a /Applications/MermaidViewer.app/Contents/PlugIns/MermaidQuickLook.appex 2>/dev/null || true
+	@echo "==> Extension registered"
 
 # Show help
 help:

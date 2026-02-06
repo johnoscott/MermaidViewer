@@ -10,10 +10,21 @@ struct SettingsView: View {
     private var qlSizing: String = "fit"
 
     @AppStorage("ql.darkMode", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
-    private var qlDarkMode: String = "system"  // "system", "light", "dark"
+    private var qlDarkMode: String = "system"
+
+    @AppStorage("ql.backgroundMode", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
+    private var qlBackgroundMode: String = "transparent"
 
     @AppStorage("ql.backgroundColor", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
     private var qlBackgroundColor: String = "#f5f5f5"
+
+    @AppStorage("ql.showDebug", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
+    private var qlShowDebug: Bool = false
+
+    @AppStorage("ql.mouseMode", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
+    private var qlMouseMode: String = "pan"
+
+    @State private var backgroundColor: Color = Color(hex: "#f5f5f5") ?? .gray
 
     @Environment(\.colorScheme) private var systemColorScheme
 
@@ -24,10 +35,6 @@ struct SettingsView: View {
     // Thumbnail Settings
     @AppStorage("thumbnail.enabled") private var thumbnailEnabled: Bool = true
     @AppStorage("thumbnail.style") private var thumbnailStyle: String = "diagram"
-
-    // App Settings
-    @AppStorage("defaultTheme") private var defaultTheme: String = "default"
-    @AppStorage("autoRefresh") private var autoRefresh: Bool = true
 
     private let sampleDiagram = """
         flowchart TD
@@ -55,84 +62,156 @@ struct SettingsView: View {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 600, height: 500)
+        .frame(width: 800, height: 450)
     }
 
     private var quickLookSettingsTab: some View {
-        HSplitView {
-            // Settings Panel
-            VStack(spacing: 0) {
-                Form {
-                    Section("Theme") {
-                        Picker("Diagram Theme", selection: $qlTheme) {
+        HStack(spacing: 0) {
+            // Settings Panel - compact grid layout
+            VStack(alignment: .leading, spacing: 16) {
+                // Theme & Appearance Row
+                HStack(alignment: .top, spacing: 24) {
+                    // Theme
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Theme")
+                            .font(.headline)
+                        Picker("", selection: $qlTheme) {
                             Text("Default").tag("default")
                             Text("Dark").tag("dark")
                             Text("Forest").tag("forest")
                             Text("Neutral").tag("neutral")
                             Text("Base").tag("base")
                         }
-                        .pickerStyle(.radioGroup)
+                        .labelsHidden()
+                        .frame(width: 120)
                     }
 
-                    Section("Appearance") {
-                        Picker("Background Mode", selection: $qlDarkMode) {
-                            Text("Match System").tag("system")
-                            Text("Always Light").tag("light")
-                            Text("Always Dark").tag("dark")
+                    // Dark Mode
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Appearance")
+                            .font(.headline)
+                        Picker("", selection: $qlDarkMode) {
+                            Text("System").tag("system")
+                            Text("Light").tag("light")
+                            Text("Dark").tag("dark")
                         }
-                        .pickerStyle(.radioGroup)
-                    }
-
-                    Section("Sizing") {
-                        Picker("Diagram Sizing", selection: $qlSizing) {
-                            Text("Fit to Window").tag("fit")
-                            Text("Expand Vertically").tag("expandVertical")
-                            Text("Expand Horizontally").tag("expandHorizontal")
-                            Text("Original Size").tag("original")
-                        }
-                        .pickerStyle(.radioGroup)
+                        .labelsHidden()
+                        .frame(width: 100)
                     }
                 }
-                .formStyle(.grouped)
 
-                Divider()
+                // Sizing & Mouse Mode Row
+                HStack(alignment: .top, spacing: 24) {
+                    // Sizing
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Sizing")
+                            .font(.headline)
+                        Picker("", selection: $qlSizing) {
+                            Text("Fit to Window").tag("fit")
+                            Text("Expand Vertical").tag("expandVertical")
+                            Text("Expand Horizontal").tag("expandHorizontal")
+                            Text("Original Size").tag("original")
+                        }
+                        .labelsHidden()
+                        .frame(width: 150)
+                    }
 
-                // Apply button at bottom - always visible
-                VStack(spacing: 8) {
+                    // Mouse Mode
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Mouse")
+                            .font(.headline)
+                        Picker("", selection: $qlMouseMode) {
+                            Label("Pan", systemImage: "hand.raised.fill").tag("pan")
+                            Label("Select", systemImage: "cursorarrow").tag("select")
+                        }
+                        .labelsHidden()
+                        .frame(width: 100)
+                    }
+                }
+
+                // Background Row
+                HStack(alignment: .top, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Background")
+                            .font(.headline)
+                        HStack(spacing: 12) {
+                            Picker("", selection: $qlBackgroundMode) {
+                                Text("Transparent").tag("transparent")
+                                Text("Solid").tag("opaque")
+                            }
+                            .labelsHidden()
+                            .frame(width: 120)
+
+                            if qlBackgroundMode == "opaque" {
+                                ColorPicker("", selection: $backgroundColor, supportsOpacity: false)
+                                    .labelsHidden()
+                                    .frame(width: 44)
+                                    .onChange(of: backgroundColor) { newColor in
+                                        qlBackgroundColor = newColor.hexString
+                                    }
+                            }
+                        }
+                    }
+
+                    // Debug toggle
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Developer")
+                            .font(.headline)
+                        Toggle("Debug Info", isOn: $qlShowDebug)
+                            .toggleStyle(.checkbox)
+                    }
+                }
+
+                Spacer()
+
+                // Apply button
+                HStack {
                     Button(action: applySettings) {
-                        HStack {
+                        HStack(spacing: 6) {
                             if isApplying {
                                 ProgressView()
-                                    .scaleEffect(0.7)
-                                    .frame(width: 16, height: 16)
+                                    .scaleEffect(0.6)
+                                    .frame(width: 14, height: 14)
                             } else {
                                 Image(systemName: settingsApplied ? "checkmark.circle.fill" : "arrow.clockwise")
+                                    .foregroundColor(settingsApplied ? .green : .accentColor)
                             }
-                            Text(settingsApplied ? "Settings Applied" : "Apply to Finder")
+                            Text(settingsApplied ? "Applied" : "Apply to Finder")
                         }
-                        .frame(maxWidth: .infinity)
                     }
                     .disabled(settingsApplied || isApplying)
                     .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .controlSize(.regular)
 
-                    Text("Click to apply settings to Finder Quick Look")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    if !settingsApplied {
+                        Text("Restart Quick Look to see changes")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
-                .padding()
             }
-            .frame(minWidth: 220, maxWidth: 260)
+            .padding(20)
+            .frame(width: 320)
             .onChange(of: qlTheme) { _ in settingsApplied = false }
             .onChange(of: qlDarkMode) { _ in settingsApplied = false }
             .onChange(of: qlSizing) { _ in settingsApplied = false }
+            .onChange(of: qlShowDebug) { _ in settingsApplied = false }
+            .onChange(of: qlBackgroundMode) { _ in settingsApplied = false }
+            .onChange(of: qlBackgroundColor) { _ in settingsApplied = false }
+            .onChange(of: qlMouseMode) { _ in settingsApplied = false }
+            .onAppear {
+                backgroundColor = Color(hex: qlBackgroundColor) ?? .gray
+            }
+
+            Divider()
 
             // Preview Panel
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text("Preview")
                     .font(.headline)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 8)
 
                 SettingsPreviewWebView(
                     code: sampleDiagram,
@@ -142,68 +221,81 @@ struct SettingsView: View {
                     sizing: qlSizing
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 8))
-                .padding(.horizontal)
-                .padding(.bottom, 8)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
             }
+            .frame(maxWidth: .infinity)
             .background(Color(NSColor.controlBackgroundColor))
         }
     }
 
     private var thumbnailSettingsTab: some View {
-        Form {
-            Section("Thumbnail Generation") {
-                Toggle("Generate Thumbnails for .mmd Files", isOn: $thumbnailEnabled)
+        HStack(spacing: 0) {
+            // Settings
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Thumbnail Generation")
+                    .font(.headline)
+
+                Toggle("Generate thumbnails for .mmd files", isOn: $thumbnailEnabled)
+                    .toggleStyle(.checkbox)
 
                 if thumbnailEnabled {
-                    Picker("Thumbnail Style", selection: $thumbnailStyle) {
-                        Text("Rendered Diagram").tag("diagram")
-                        Text("Document Icon").tag("icon")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Style")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Picker("", selection: $thumbnailStyle) {
+                            Text("Rendered Diagram").tag("diagram")
+                            Text("Document Icon").tag("icon")
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.radioGroup)
                     }
-                    .pickerStyle(.radioGroup)
+                    .padding(.leading, 20)
+                }
 
-                    Text("Thumbnails show a preview of your Mermaid diagram in Finder.")
+                Spacer()
+
+                Text("Thumbnails show a preview of your Mermaid diagram in Finder.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(20)
+            .frame(width: 320)
+
+            Divider()
+
+            // Preview
+            VStack {
+                Spacer()
+                VStack(spacing: 12) {
+                    Image(systemName: thumbnailEnabled ? "doc.richtext" : "doc")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 80, height: 100)
+                        .foregroundColor(.blue)
+
+                    Text(thumbnailEnabled ? "With Thumbnail" : "No Thumbnail")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                Spacer()
             }
-
-            Section("Preview") {
-                HStack {
-                    Spacer()
-                    VStack {
-                        Image(systemName: thumbnailEnabled ? "doc.richtext" : "doc")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 64, height: 80)
-                            .foregroundColor(.blue)
-
-                        Text(thumbnailEnabled ? "With Thumbnail" : "No Thumbnail")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                }
-                .padding()
-            }
+            .frame(maxWidth: .infinity)
+            .background(Color(NSColor.controlBackgroundColor))
         }
-        .formStyle(.grouped)
     }
 
     private func applySettings() {
         isApplying = true
 
         DispatchQueue.global(qos: .userInitiated).async {
-            // Settings are automatically synced via App Group UserDefaults
-            // Just need to restart Quick Look to pick up changes
-
-            // Reset Quick Look cache
             let qlmanage = Process()
             qlmanage.executableURL = URL(fileURLWithPath: "/usr/bin/qlmanage")
             qlmanage.arguments = ["-r"]
             try? qlmanage.run()
             qlmanage.waitUntilExit()
 
-            // Kill Quick Look services to force reload
             let killQL = Process()
             killQL.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
             killQL.arguments = ["-9", "QuickLookUIService"]
@@ -218,47 +310,75 @@ struct SettingsView: View {
     }
 
     private var aboutTab: some View {
-        Form {
-            Section("Application") {
-                HStack {
-                    Text("Mermaid Viewer")
-                    Spacer()
-                    Text("Version 1.0.0")
-                        .foregroundColor(.secondary)
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 20) {
+                // App info
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Application")
+                        .font(.headline)
+                    Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+                        GridRow {
+                            Text("Mermaid Viewer")
+                            Text("Version 1.0.0")
+                                .foregroundColor(.secondary)
+                        }
+                        GridRow {
+                            Text("Mermaid.js")
+                            Text("v11.x (bundled)")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .font(.system(.body, design: .default))
                 }
 
-                HStack {
-                    Text("Mermaid.js")
-                    Spacer()
-                    Text("v11.x (bundled)")
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            Section("Quick Look Extension") {
-                HStack {
-                    Text("Status")
-                    Spacer()
-                    Text("Registered")
-                        .foregroundColor(.green)
+                // Extension status
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Quick Look Extension")
+                        .font(.headline)
+                    HStack {
+                        Text("Status:")
+                        Text("Registered")
+                            .foregroundColor(.green)
+                            .fontWeight(.medium)
+                    }
                 }
 
-                Text("Press Space on any .mmd or .mermaid file in Finder to preview.")
+                // Usage
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Usage")
+                        .font(.headline)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("• Press Space on any .mmd or .mermaid file in Finder")
+                        Text("• Supported: .mmd, .mermaid, .md (with mermaid blocks)")
+                        Text("• App must remain installed for Quick Look to work")
+                    }
                     .font(.caption)
                     .foregroundColor(.secondary)
-            }
-
-            Section("Usage") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("This application provides Quick Look previews for Mermaid diagram files.")
-                    Text("Supported file types: .mmd, .mermaid")
-                    Text("The app must remain installed for Quick Look to work.")
                 }
-                .font(.caption)
-                .foregroundColor(.secondary)
+
+                Spacer()
             }
+            .padding(20)
+            .frame(width: 320)
+
+            Divider()
+
+            // Logo/branding area
+            VStack {
+                Spacer()
+                Image(systemName: "flowchart.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 80, height: 80)
+                    .foregroundColor(.accentColor.opacity(0.6))
+                Text("Mermaid Viewer")
+                    .font(.title2)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color(NSColor.controlBackgroundColor))
         }
-        .formStyle(.grouped)
     }
 }
 
@@ -271,13 +391,7 @@ struct SettingsPreviewWebView: NSViewRepresentable {
     let systemColorScheme: ColorScheme
     let sizing: String
 
-    private var isDarkMode: Bool {
-        switch darkModeSetting {
-        case "light": return false
-        case "dark": return true
-        default: return systemColorScheme == .dark
-        }
-    }
+    private static let renderer = MermaidRenderer(bundle: Bundle.main)
 
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -292,86 +406,45 @@ struct SettingsPreviewWebView: NSViewRepresentable {
     }
 
     private func loadPreview(webView: WKWebView) {
-        guard let mermaidJSURL = Bundle.main.url(forResource: "mermaid.min", withExtension: "js"),
-              let mermaidJS = try? String(contentsOf: mermaidJSURL, encoding: .utf8) else {
-            return
-        }
+        var options = MermaidRenderOptions()
+        options.theme = theme
+        options.darkModeSetting = darkModeSetting
+        options.sizing = sizing
+        options.showToolbar = true
+        options.showDebug = false
 
-        let escapedCode = code
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "`", with: "\\`")
-            .replacingOccurrences(of: "$", with: "\\$")
-            .replacingOccurrences(of: "\n", with: "\\n")
-
-        let sizingCSS: String
-        switch sizing {
-        case "expandVertical":
-            sizingCSS = "height: 100%; width: auto;"
-        case "expandHorizontal":
-            sizingCSS = "width: 100%; height: auto;"
-        case "original":
-            sizingCSS = ""
-        default: // fit
-            sizingCSS = "max-width: 100%; max-height: 100%;"
-        }
-
-        let html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                html, body {
-                    width: 100%;
-                    height: 100%;
-                    overflow: auto;
-                    background: \(isDarkMode ? "#1e1e1e" : "#f5f5f5");
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    padding: 10px;
-                }
-                #diagram {
-                    background: \(isDarkMode ? "#2d2d2d" : "white");
-                    border-radius: 8px;
-                    padding: 16px;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, \(isDarkMode ? "0.4" : "0.1"));
-                    \(sizingCSS)
-                }
-                .mermaid svg {
-                    \(sizingCSS)
-                }
-            </style>
-            <script>\(mermaidJS)</script>
-        </head>
-        <body>
-            <div id="diagram">
-                <div class="mermaid"></div>
-            </div>
-            <script>
-                mermaid.initialize({
-                    startOnLoad: false,
-                    theme: '\(theme)',
-                    securityLevel: 'loose'
-                });
-                (async () => {
-                    try {
-                        const { svg } = await mermaid.render('preview', `\(escapedCode)`);
-                        document.querySelector('.mermaid').innerHTML = svg;
-                    } catch (e) {
-                        document.querySelector('.mermaid').innerHTML = '<p style="color:red">' + e.message + '</p>';
-                    }
-                })();
-            </script>
-        </body>
-        </html>
-        """
-
+        let systemIsDark = systemColorScheme == .dark
+        let html = Self.renderer.generateHTML(code: code, options: options, systemIsDark: systemIsDark)
         webView.loadHTMLString(html, baseURL: nil)
     }
 }
 
 #Preview {
     SettingsView()
+}
+
+// MARK: - Color Hex Extension
+
+extension Color {
+    init?(hex: String) {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        var rgb: UInt64 = 0
+        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
+
+        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
+        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
+        let b = Double(rgb & 0x0000FF) / 255.0
+
+        self.init(red: r, green: g, blue: b)
+    }
+
+    var hexString: String {
+        guard let components = NSColor(self).usingColorSpace(.sRGB) else { return "#808080" }
+        let r = Int(components.redComponent * 255)
+        let g = Int(components.greenComponent * 255)
+        let b = Int(components.blueComponent * 255)
+        return String(format: "#%02X%02X%02X", r, g, b)
+    }
 }
