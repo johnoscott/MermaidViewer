@@ -1,0 +1,239 @@
+# MermaidViewer Release Workflow
+#
+# Builds, code-signs, notarizes, and publishes MermaidViewer as a DMG to GitHub Releases.
+#
+# Triggers:
+#   - Tag push matching v* (e.g., v1.0.0)
+#   - Manual dispatch with a version input
+#
+# Required GitHub Secrets:
+#   DEVELOPER_ID_CERTIFICATE_P12       - Base64-encoded Developer ID Application certificate (.p12)
+#   DEVELOPER_ID_CERTIFICATE_PASSWORD  - Password for the .p12 file
+#   APPLE_TEAM_ID                      - Apple Developer Team ID (e.g., KJ8QMLWB97)
+#   NOTARY_API_KEY_ID                  - App Store Connect API Key ID
+#   NOTARY_API_KEY_ISSUER_ID           - App Store Connect API Issuer ID
+#   NOTARY_API_KEY                     - Base64-encoded App Store Connect API private key (.p8)
+#
+# To set up secrets:
+#   1. Export your Developer ID Application cert as .p12 from Keychain Access
+#   2. base64 -i certificate.p12 | pbcopy  → paste as DEVELOPER_ID_CERTIFICATE_P12
+#   3. Create an App Store Connect API key at https://appstoreconnect.apple.com/access/api
+#   4. base64 -i AuthKey_XXXXXX.p8 | pbcopy  → paste as NOTARY_API_KEY
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  SCHEME: MermaidViewer
+  APP_NAME: MermaidViewer.app
+  DMG_NAME: MermaidViewer
+
+jobs:
+  build-sign-release:
+    name: Build, Sign & Release
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Import code signing certificate
+        env:
+          P12_BASE64: ${{ secrets.DEVELOPER_ID_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+        run: |
+          # Create a temporary keychain
+          KEYCHAIN_PATH="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          echo "$P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security import "$CERT_PATH" \
+            -P "$P12_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+
+          # Set key partition list for codesign access
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Add temporary keychain to search list
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          security default-keychain -s "$KEYCHAIN_PATH"
+
+          # Verify certificate was imported
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          # Save keychain path for cleanup
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build & Archive
+        run: |
+          xcodebuild archive \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/MermaidViewer.xcarchive" \
+            -allowProvisioningUpdates \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            MARKETING_VERSION="${{ steps.version.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
+
+      - name: Export archive
+        run: |
+          # Generate ExportOptions.plist with the team ID
+          cat > "$RUNNER_TEMP/ExportOptions.plist" << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>developer-id</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+          PLIST
+          echo "  <string>${{ secrets.APPLE_TEAM_ID }}</string>" >> "$RUNNER_TEMP/ExportOptions.plist"
+          cat >> "$RUNNER_TEMP/ExportOptions.plist" << 'PLIST'
+            <key>signingCertificate</key>
+            <string>Developer ID Application</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.roundrect.mermaidviewer</key>
+              <string></string>
+              <key>com.roundrect.mermaidviewer.quicklook</key>
+              <string></string>
+              <key>com.roundrect.mermaidviewer.thumbnail</key>
+              <string></string>
+            </dict>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/MermaidViewer.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates
+
+      - name: Set up notarization credentials
+        env:
+          NOTARY_API_KEY_BASE64: ${{ secrets.NOTARY_API_KEY }}
+          NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+        run: |
+          # Create the API key directory and file
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          echo "$NOTARY_API_KEY_BASE64" | base64 --decode \
+            > "$RUNNER_TEMP/private_keys/AuthKey_${NOTARY_API_KEY_ID}.p8"
+
+      - name: Notarize app
+        run: |
+          # Create a zip for notarization submission
+          ditto -c -k --keepParent \
+            "$RUNNER_TEMP/export/$APP_NAME" \
+            "$RUNNER_TEMP/MermaidViewer-notarize.zip"
+
+          # Submit for notarization
+          xcrun notarytool submit \
+            "$RUNNER_TEMP/MermaidViewer-notarize.zip" \
+            --key "$RUNNER_TEMP/private_keys/AuthKey_${{ secrets.NOTARY_API_KEY_ID }}.p8" \
+            --key-id "${{ secrets.NOTARY_API_KEY_ID }}" \
+            --issuer "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}" \
+            --wait \
+            --timeout 30m
+
+          # Staple the notarization ticket to the app
+          xcrun stapler staple "$RUNNER_TEMP/export/$APP_NAME"
+
+          # Verify stapling
+          xcrun stapler validate "$RUNNER_TEMP/export/$APP_NAME"
+
+      - name: Create DMG
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DMG_FILE="${DMG_NAME}-${VERSION}.dmg"
+
+          # Create a temporary directory for DMG contents
+          DMG_STAGING="$RUNNER_TEMP/dmg-staging"
+          mkdir -p "$DMG_STAGING"
+
+          # Copy the notarized app
+          cp -R "$RUNNER_TEMP/export/$APP_NAME" "$DMG_STAGING/"
+
+          # Create Applications symlink for drag-install
+          ln -s /Applications "$DMG_STAGING/Applications"
+
+          # Create the DMG
+          hdiutil create \
+            -volname "$DMG_NAME" \
+            -srcfolder "$DMG_STAGING" \
+            -ov \
+            -format UDZO \
+            "$RUNNER_TEMP/$DMG_FILE"
+
+          echo "DMG_FILE=$DMG_FILE" >> "$GITHUB_ENV"
+          echo "DMG_PATH=$RUNNER_TEMP/$DMG_FILE" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+
+          # Create tag if triggered by workflow_dispatch
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            git tag "$TAG" || true
+            git push origin "$TAG" || true
+          fi
+
+          # Create the release with the DMG
+          gh release create "$TAG" \
+            "$DMG_PATH#MermaidViewer ${VERSION} (DMG)" \
+            --title "MermaidViewer $VERSION" \
+            --generate-notes
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          if [ -n "$KEYCHAIN_PATH" ] && [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+          fi
