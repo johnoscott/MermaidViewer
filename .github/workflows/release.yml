@@ -42,6 +42,8 @@ jobs:
   build-sign-release:
     name: Build, Sign & Release
     runs-on: macos-15
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
