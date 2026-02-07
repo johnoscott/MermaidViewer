@@ -113,18 +113,19 @@ jobs:
 
       - name: Build & Archive
         run: |
-          # Archive without code signing. The export step re-signs
-          # with Developer ID Application certificate.
+          # Archive with ad-hoc signing to preserve hardened runtime.
+          # The export step re-signs with Developer ID Application.
           xcodebuild archive \
             -scheme "$SCHEME" \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/MermaidViewer.xcarchive" \
+            CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY=- \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             MARKETING_VERSION="${{ steps.version.outputs.version }}" \
-            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}"
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+            ENABLE_HARDENED_RUNTIME=YES
 
       - name: Export archive
         run: |
