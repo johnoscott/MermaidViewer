@@ -13,6 +13,7 @@
 #   NOTARY_API_KEY_ID                  - App Store Connect API Key ID
 #   NOTARY_API_KEY_ISSUER_ID           - App Store Connect API Issuer ID
 #   NOTARY_API_KEY                     - Base64-encoded App Store Connect API private key (.p8)
+#   HOMEBREW_TAP_TOKEN                 - Personal access token with repo scope for johnoscott/homebrew-mermaid-viewer
 #
 # To set up secrets:
 #   1. Export your Developer ID Application cert as .p12 from Keychain Access
@@ -247,6 +248,39 @@ jobs:
             "$DMG_PATH#MermaidViewer ${VERSION} (DMG)" \
             --title "MermaidViewer $VERSION" \
             --generate-notes
+
+      - name: Update Homebrew cask
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$HOMEBREW_TAP_TOKEN" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN not set, skipping Homebrew cask update"
+            exit 0
+          fi
+
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
+
+          echo "Version: $VERSION"
+          echo "SHA256: $SHA256"
+
+          # Clone the Homebrew tap repo
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/johnoscott/homebrew-mermaid-viewer.git" \
+            "$RUNNER_TEMP/homebrew-tap"
+
+          cd "$RUNNER_TEMP/homebrew-tap"
+
+          # Update version and sha256 in the cask formula
+          sed -i '' "s/version \".*\"/version \"$VERSION\"/" Casks/mermaid-viewer.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"$SHA256\"/" Casks/mermaid-viewer.rb
+
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/mermaid-viewer.rb
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Update mermaid-viewer to $VERSION"
+          git push
 
       - name: Clean up keychain
         if: always()
