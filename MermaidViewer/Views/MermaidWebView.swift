@@ -1,6 +1,10 @@
 import SwiftUI
 import WebKit
 
+private class NonInteractiveWebView: WKWebView {
+    override var acceptsFirstResponder: Bool { false }
+}
+
 struct MermaidWebView: NSViewRepresentable {
     let code: String
     let theme: MermaidTheme
@@ -14,7 +18,7 @@ struct MermaidWebView: NSViewRepresentable {
         let configuration = WKWebViewConfiguration()
         configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
 
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let webView = NonInteractiveWebView(frame: .zero, configuration: configuration)
         webView.setValue(false, forKey: "drawsBackground")
         webView.navigationDelegate = context.coordinator
         context.coordinator.webView = webView

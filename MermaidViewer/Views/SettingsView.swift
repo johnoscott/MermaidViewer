@@ -2,6 +2,8 @@ import SwiftUI
 import WebKit
 
 struct SettingsView: View {
+    @EnvironmentObject var shortcutManager: ShortcutManager
+
     // Quick Look Settings (stored in shared UserDefaults for extension access)
     @AppStorage("ql.theme", store: UserDefaults(suiteName: "group.com.roundrect.mermaidviewer"))
     private var qlTheme: String = "default"
@@ -55,6 +57,11 @@ struct SettingsView: View {
             thumbnailSettingsTab
                 .tabItem {
                     Label("Thumbnails", systemImage: "photo")
+                }
+
+            KeyboardShortcutsSettingsView(manager: shortcutManager)
+                .tabItem {
+                    Label("Shortcuts", systemImage: "keyboard")
                 }
 
             aboutTab
@@ -421,6 +428,7 @@ struct SettingsPreviewWebView: NSViewRepresentable {
 
 #Preview {
     SettingsView()
+        .environmentObject(ShortcutManager())
 }
 
 // MARK: - Color Hex Extension

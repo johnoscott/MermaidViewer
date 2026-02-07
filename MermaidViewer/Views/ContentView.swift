@@ -1,8 +1,8 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct ContentView: View {
-    @EnvironmentObject var appState: AppState
+    @Binding var document: MermaidDocument
+    let fileURL: URL?
     @State private var selectedTheme: MermaidTheme = .default
     @State private var isDarkMode: Bool = false
     @State private var zoomLevel: Double = 1.0
@@ -17,14 +17,11 @@ struct ContentView: View {
                         Text("Mermaid Code")
                             .font(.headline)
                         Spacer()
-                        Button("Load File...") {
-                            loadFile()
-                        }
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 8)
 
-                    TextEditor(text: $appState.mermaidCode)
+                    TextEditor(text: $document.code)
                         .font(.system(.body, design: .monospaced))
                         .padding(4)
                 }
@@ -82,7 +79,7 @@ struct ContentView: View {
                 Divider()
 
                 MermaidWebView(
-                    code: appState.mermaidCode,
+                    code: document.code,
                     theme: selectedTheme,
                     isDarkMode: isDarkMode,
                     zoomLevel: zoomLevel
@@ -91,37 +88,18 @@ struct ContentView: View {
             .frame(minWidth: 400)
         }
         .frame(minWidth: showEditor ? 800 : 400, minHeight: 500)
-        .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-            handleDrop(providers: providers)
-            return true
+        .navigationTitle(windowTitle)
+        .onReceive(NotificationCenter.default.publisher(for: .toggleEditor)) { _ in
+            withAnimation { showEditor.toggle() }
         }
     }
 
-    private func loadFile() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [
-            UTType(filenameExtension: "mmd")!,
-            UTType(filenameExtension: "mermaid")!,
-            UTType(filenameExtension: "md")!
-        ]
-        panel.allowsMultipleSelection = false
-
-        if panel.runModal() == .OK, let url = panel.url {
-            appState.loadFile(url: url)
-        }
-    }
-
-    private func handleDrop(providers: [NSItemProvider]) {
-        for provider in providers {
-            provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
-                if let data = item as? Data,
-                   let url = URL(dataRepresentation: data, relativeTo: nil) {
-                    DispatchQueue.main.async {
-                        self.appState.loadFile(url: url)
-                    }
-                }
-            }
-        }
+    private var windowTitle: String {
+        guard let url = fileURL else { return "MermaidViewer" }
+        return url.deletingPathExtension().lastPathComponent
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .capitalized
     }
 }
 
@@ -144,6 +122,5 @@ enum MermaidTheme: String, CaseIterable {
 }
 
 #Preview {
-    ContentView()
-        .environmentObject(AppState.shared)
+    ContentView(document: .constant(MermaidDocument()), fileURL: nil)
 }
