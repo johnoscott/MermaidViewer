@@ -1,102 +1,86 @@
 # MermaidViewer
 
-A macOS Quick Look extension for previewing Mermaid diagram files (.mmd, .mermaid) directly in Finder.
+A macOS Quick Look extension for previewing Mermaid diagram files directly in Finder. Select any `.mmd` or `.mermaid` file and press **Space** to see your diagram rendered instantly.
 
-## Features
+## Installation
 
-- **Quick Look Preview**: Press Space on any .mmd or .mermaid file in Finder
-- **Theme Selection**: Default, Dark, Forest, Neutral, Base
-- **Dark Mode Support**: Match system, Always Light, Always Dark
-- **Sizing Options**: Fit to Window, Expand Vertically/Horizontally, Original Size
-- **Markdown Support**: Extracts mermaid blocks from .md files
-- **Bundled mermaid.js**: No internet connection required
+1. Download **MermaidViewer.dmg** from the [latest release](https://github.com/johnoscott/MermaidViewer/releases/latest)
+2. Open the DMG and drag **MermaidViewer.app** to your Applications folder
+3. Launch the app once to register the Quick Look extension
+4. That's it — Quick Look previews are now enabled for Mermaid files
 
-## Setup (Apple Developer Account Required)
+> The app must remain in /Applications for Quick Look to work. No internet connection required — Mermaid.js is bundled.
 
-### 1. Create App Group in Apple Developer Portal
+## Supported File Types
 
-1. Go to [Apple Developer Portal](https://developer.apple.com/account/resources/identifiers/list/applicationGroup)
-2. Click **+** to create a new App Group
-3. Enter identifier: `group.com.roundrect.mermaidviewer`
-4. Click **Continue** and **Register**
+- `.mmd` — Mermaid diagram files
+- `.mermaid` — Mermaid diagram files
+- `.md` / `.markdown` — Markdown files containing mermaid code blocks
 
-### 2. Create/Update App IDs
+## Quick Look Preview
 
-Create or update these App IDs with the App Group capability:
+Select a Mermaid file in Finder and press **Space**. A toolbar appears when you hover:
 
-- `com.roundrect.mermaidviewer` (main app)
-- `com.roundrect.mermaidviewer.quicklook` (Quick Look extension)
-- `com.roundrect.mermaidviewer.thumbnail` (Thumbnail extension)
+| Control | Action |
+|---------|--------|
+| Hand | Pan mode — click and drag to move the diagram |
+| Arrow | Select mode — normal cursor |
+| - / + | Zoom out / Zoom in |
+| 100% | Current zoom level |
+| Home | Reset view to original position and zoom |
+| Grid | Toggle transparent/opaque background |
+| Color | Background color picker |
 
-For each App ID:
-1. Enable **App Groups** capability
-2. Select `group.com.roundrect.mermaidviewer`
+**Mouse controls:** scroll wheel to zoom (centered on cursor), click+drag to pan.
 
-### 3. Configure Team ID
+## Finder Thumbnails
 
-Edit `project.yml` and set your Team ID:
+Mermaid files show rendered diagram thumbnails in Finder icon view and column view. Thumbnail style is configurable in the app settings.
 
-```yaml
-settings:
-  DEVELOPMENT_TEAM: "YOUR_TEAM_ID"  # e.g., "ABCD1234EF"
-```
+## Settings
 
-Find your Team ID at: https://developer.apple.com/account/#/membership
+Open MermaidViewer and go to **Settings** (Cmd+,) to configure:
 
-### 4. Build and Install
+- **Theme** — Default, Dark, Forest, Neutral, Base
+- **Appearance** — Match system, Always Light, Always Dark
+- **Sizing** — Fit to Window, Expand Vertically/Horizontally, Original Size
+- **Mouse Mode** — Default to Pan or Select
+- **Background** — Transparent or solid color
+- **Debug** — Show diagnostic info overlay
 
-```bash
-# Generate Xcode project and build
-make
+Click **Apply to Finder** after changing settings to refresh Quick Look.
 
-# Or for development
-make dev
+## Mermaid Editor
 
-# Check extension status
-make status
-```
+The app includes a built-in editor:
 
-## Usage
+1. Open MermaidViewer
+2. Type or paste Mermaid code in the left panel
+3. See a live preview in the right panel
+4. Load files via the **Load File...** button or drag and drop
 
-1. Open the MermaidViewer app to configure settings
-2. Click **Apply to Finder** to restart Quick Look with new settings
-3. In Finder, select any .mmd file and press **Space** to preview
+## Troubleshooting
 
-## Makefile Commands
+**Quick Look not showing previews:**
+1. Make sure MermaidViewer.app is in /Applications
+2. Open the app, go to Settings, and click **Apply to Finder**
+3. Try relaunching Finder (Option+right-click Finder icon in Dock, then Relaunch)
 
-| Command | Description |
-|---------|-------------|
-| `make` | Build, install, and register (default) |
-| `make dev` | Quick rebuild and install |
-| `make clean` | Clean build artifacts |
-| `make status` | Check extension registration |
-| `make refresh` | Clear caches and restart services |
-| `make test` | Test Quick Look preview |
+**Preview shows stale content:**
+Quick Look caches previews. Open Settings and click **Apply to Finder** to clear the cache.
 
-## Project Structure
-
-```
-MermaidQuickLook/
-├── MermaidViewer/          # Main app
-│   ├── Views/
-│   │   ├── ContentView.swift
-│   │   └── SettingsView.swift
-│   └── Resources/
-│       └── mermaid.min.js
-├── MermaidQuickLook/       # Quick Look extension
-│   └── PreviewProvider.swift
-├── MermaidThumbnail/       # Thumbnail extension
-│   └── ThumbnailProvider.swift
-├── project.yml             # xcodegen configuration
-└── Makefile               # Build automation
-```
+**Diagram not rendering:**
+- Verify your Mermaid syntax is valid
+- Enable **Debug Info** in Settings to see error details
+- Check the file has a supported extension (.mmd, .mermaid, .md)
 
 ## Requirements
 
-- macOS 13.0+
-- Xcode 15.0+
-- Apple Developer Account (for App Groups)
-- [xcodegen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
+- macOS 13.0 (Ventura) or later
+
+## Building from Source
+
+See [DEVELOPER.md](DEVELOPER.md) for build instructions and architecture details.
 
 ## License
 
