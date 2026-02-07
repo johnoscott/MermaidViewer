@@ -6,32 +6,45 @@ struct ContentView: View {
     @State private var selectedTheme: MermaidTheme = .default
     @State private var isDarkMode: Bool = false
     @State private var zoomLevel: Double = 1.0
+    @State private var showEditor: Bool = false
 
     var body: some View {
         HSplitView {
-            // Editor pane
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("Mermaid Code")
-                        .font(.headline)
-                    Spacer()
-                    Button("Load File...") {
-                        loadFile()
+            // Editor pane (conditionally shown)
+            if showEditor {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text("Mermaid Code")
+                            .font(.headline)
+                        Spacer()
+                        Button("Load File...") {
+                            loadFile()
+                        }
                     }
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
 
-                TextEditor(text: $appState.mermaidCode)
-                    .font(.system(.body, design: .monospaced))
-                    .padding(4)
+                    TextEditor(text: $appState.mermaidCode)
+                        .font(.system(.body, design: .monospaced))
+                        .padding(4)
+                }
+                .frame(minWidth: 300)
             }
-            .frame(minWidth: 300)
 
             // Preview pane
             VStack(spacing: 0) {
                 // Toolbar
                 HStack {
+                    Button {
+                        withAnimation {
+                            showEditor.toggle()
+                        }
+                    } label: {
+                        Image(systemName: "sidebar.left")
+                    }
+                    .help(showEditor ? "Hide Editor" : "Show Editor")
+                    .buttonStyle(.bordered)
+
                     Text("Preview")
                         .font(.headline)
 
@@ -77,7 +90,7 @@ struct ContentView: View {
             }
             .frame(minWidth: 400)
         }
-        .frame(minWidth: 800, minHeight: 500)
+        .frame(minWidth: showEditor ? 800 : 400, minHeight: 500)
         .onDrop(of: [.fileURL], isTargeted: nil) { providers in
             handleDrop(providers: providers)
             return true
