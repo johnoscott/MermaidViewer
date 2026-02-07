@@ -4,10 +4,18 @@ A macOS Quick Look extension for previewing Mermaid diagram files directly in Fi
 
 ## Installation
 
+### Homebrew
+
+```bash
+brew install johnoscott/mermaid-viewer/mermaid-viewer
+```
+
+### Manual
+
 1. Download **MermaidViewer.dmg** from the [latest release](https://github.com/johnoscott/MermaidViewer/releases/latest)
 2. Open the DMG and drag **MermaidViewer.app** to your Applications folder
-3. Launch the app once to register the Quick Look extension
-4. That's it — Quick Look previews are now enabled for Mermaid files
+
+Then launch the app once to register the Quick Look extension.
 
 > The app must remain in /Applications for Quick Look to work. No internet connection required — Mermaid.js is bundled.
 
