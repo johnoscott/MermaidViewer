@@ -113,22 +113,23 @@ jobs:
 
       - name: Build & Archive
         run: |
-          # Archive without code signing — the export step will
-          # re-sign everything with Developer ID Application.
+          # Archive with manual Developer ID signing.
+          # Empty PROVISIONING_PROFILE_SPECIFIER bypasses profile requirement.
           xcodebuild archive \
             -scheme "$SCHEME" \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/MermaidViewer.xcarchive" \
-            CODE_SIGN_IDENTITY=- \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
             MARKETING_VERSION="${{ steps.version.outputs.version }}" \
-            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}"
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
 
       - name: Export archive
         run: |
-          # Generate ExportOptions.plist for Developer ID signing
+          # Generate ExportOptions.plist for Developer ID export
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -147,11 +148,15 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/MermaidViewer.xcarchive" \
             -exportPath "$RUNNER_TEMP/export" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$API_KEY_PATH" \
-            -authenticationKeyID "${{ secrets.NOTARY_API_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}"
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+
+      - name: Verify code signing
+        run: |
+          echo "==> Checking code signature..."
+          codesign -dvvv "$RUNNER_TEMP/export/$APP_NAME"
+          echo ""
+          echo "==> Verifying signature..."
+          codesign --verify --deep --strict "$RUNNER_TEMP/export/$APP_NAME"
 
       - name: Notarize app
         run: |
@@ -160,14 +165,31 @@ jobs:
             "$RUNNER_TEMP/export/$APP_NAME" \
             "$RUNNER_TEMP/MermaidViewer-notarize.zip"
 
-          # Submit for notarization (API key was set up earlier)
+          # Submit for notarization
           xcrun notarytool submit \
             "$RUNNER_TEMP/MermaidViewer-notarize.zip" \
             --key "$API_KEY_PATH" \
             --key-id "${{ secrets.NOTARY_API_KEY_ID }}" \
             --issuer "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}" \
             --wait \
-            --timeout 30m
+            --timeout 30m \
+            2>&1 | tee "$RUNNER_TEMP/notarytool-output.txt"
+
+          # Extract submission ID for potential log retrieval
+          SUBMISSION_ID=$(grep -o '[0-9a-f\-]\{36\}' "$RUNNER_TEMP/notarytool-output.txt" | head -1)
+          echo "SUBMISSION_ID=$SUBMISSION_ID" >> "$GITHUB_ENV"
+
+          # Check if notarization succeeded
+          if grep -q "status: Invalid" "$RUNNER_TEMP/notarytool-output.txt"; then
+            echo "==> Notarization failed. Fetching log..."
+            xcrun notarytool log "$SUBMISSION_ID" \
+              --key "$API_KEY_PATH" \
+              --key-id "${{ secrets.NOTARY_API_KEY_ID }}" \
+              --issuer "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}" \
+              "$RUNNER_TEMP/notarization-log.json"
+            cat "$RUNNER_TEMP/notarization-log.json"
+            exit 1
+          fi
 
           # Staple the notarization ticket to the app
           xcrun stapler staple "$RUNNER_TEMP/export/$APP_NAME"
