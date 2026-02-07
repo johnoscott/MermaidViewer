@@ -1,7 +1,7 @@
 # MermaidViewer
 
 > [!TIP]
-> **Enjoying MermaidViewer?** Please [star this repo](https://github.com/johnoscott/MermaidViewer) — it helps us get into the main [Homebrew](https://brew.sh) registry so anyone can install with just `brew install mermaid-viewer`.
+> **Enjoying MermaidViewer?** Please [star this repo](https://github.com/johnoscott/MermaidViewer) — it helps us reach the threshold to publish to the main [Homebrew](https://brew.sh) registry. You can still install via Homebrew right now — see [Installation](#installation) below.
 
 A macOS Quick Look extension for previewing Mermaid diagram files directly in Finder. Select any `.mmd` or `.mermaid` file and press **Space** to see your diagram rendered instantly.
 
