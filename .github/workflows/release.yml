@@ -100,6 +100,14 @@ jobs:
           # Save keychain path for cleanup
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
+      - name: Set up App Store Connect API key for signing
+        run: |
+          # Create the API key directory expected by xcodebuild
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          echo "${{ secrets.NOTARY_API_KEY }}" | base64 --decode \
+            > "$RUNNER_TEMP/private_keys/AuthKey_${{ secrets.NOTARY_API_KEY_ID }}.p8"
+          echo "API_KEY_PATH=$RUNNER_TEMP/private_keys/AuthKey_${{ secrets.NOTARY_API_KEY_ID }}.p8" >> "$GITHUB_ENV"
+
       - name: Generate Xcode project
         run: xcodegen generate
 
@@ -110,7 +118,9 @@ jobs:
             -configuration Release \
             -archivePath "$RUNNER_TEMP/MermaidViewer.xcarchive" \
             -allowProvisioningUpdates \
-            CODE_SIGN_STYLE=Manual \
+            -authenticationKeyPath "$API_KEY_PATH" \
+            -authenticationKeyID "${{ secrets.NOTARY_API_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}" \
             CODE_SIGN_IDENTITY="Developer ID Application" \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             MARKETING_VERSION="${{ steps.version.outputs.version }}" \
@@ -119,31 +129,20 @@ jobs:
 
       - name: Export archive
         run: |
-          # Generate ExportOptions.plist with the team ID
-          cat > "$RUNNER_TEMP/ExportOptions.plist" << 'PLIST'
+          # Generate ExportOptions.plist
+          cat > "$RUNNER_TEMP/ExportOptions.plist" << PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key>
             <string>developer-id</string>
-            <key>signingStyle</key>
-            <string>manual</string>
             <key>teamID</key>
-          PLIST
-          echo "  <string>${{ secrets.APPLE_TEAM_ID }}</string>" >> "$RUNNER_TEMP/ExportOptions.plist"
-          cat >> "$RUNNER_TEMP/ExportOptions.plist" << 'PLIST'
+            <string>${{ secrets.APPLE_TEAM_ID }}</string>
             <key>signingCertificate</key>
             <string>Developer ID Application</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.roundrect.mermaidviewer</key>
-              <string></string>
-              <key>com.roundrect.mermaidviewer.quicklook</key>
-              <string></string>
-              <key>com.roundrect.mermaidviewer.thumbnail</key>
-              <string></string>
-            </dict>
+            <key>signingStyle</key>
+            <string>automatic</string>
           </dict>
           </plist>
           PLIST
@@ -152,17 +151,10 @@ jobs:
             -archivePath "$RUNNER_TEMP/MermaidViewer.xcarchive" \
             -exportPath "$RUNNER_TEMP/export" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-            -allowProvisioningUpdates
-
-      - name: Set up notarization credentials
-        env:
-          NOTARY_API_KEY_BASE64: ${{ secrets.NOTARY_API_KEY }}
-          NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
-        run: |
-          # Create the API key directory and file
-          mkdir -p "$RUNNER_TEMP/private_keys"
-          echo "$NOTARY_API_KEY_BASE64" | base64 --decode \
-            > "$RUNNER_TEMP/private_keys/AuthKey_${NOTARY_API_KEY_ID}.p8"
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$API_KEY_PATH" \
+            -authenticationKeyID "${{ secrets.NOTARY_API_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}"
 
       - name: Notarize app
         run: |
@@ -171,10 +163,10 @@ jobs:
             "$RUNNER_TEMP/export/$APP_NAME" \
             "$RUNNER_TEMP/MermaidViewer-notarize.zip"
 
-          # Submit for notarization
+          # Submit for notarization (API key was set up earlier)
           xcrun notarytool submit \
             "$RUNNER_TEMP/MermaidViewer-notarize.zip" \
-            --key "$RUNNER_TEMP/private_keys/AuthKey_${{ secrets.NOTARY_API_KEY_ID }}.p8" \
+            --key "$API_KEY_PATH" \
             --key-id "${{ secrets.NOTARY_API_KEY_ID }}" \
             --issuer "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}" \
             --wait \
