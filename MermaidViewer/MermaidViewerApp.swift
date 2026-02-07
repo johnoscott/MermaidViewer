@@ -1,109 +1,56 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-@main
-struct MermaidViewerApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var appState = AppState.shared
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .environmentObject(appState)
-        }
-        .commands {
-            CommandGroup(replacing: .newItem) {
-                Button("Open...") {
-                    openFile()
-                }
-                .keyboardShortcut("o", modifiers: .command)
-            }
-        }
-
-        Settings {
-            SettingsView()
-        }
-    }
-
-    private func openFile() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [
-            UTType(filenameExtension: "mmd")!,
-            UTType(filenameExtension: "mermaid")!,
-            UTType(filenameExtension: "md")!
-        ]
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-
-        if panel.runModal() == .OK, let url = panel.url {
-            appState.loadFile(url: url)
-        }
-    }
+extension UTType {
+    static let mermaidDiagram = UTType(exportedAs: "com.mermaid.diagram")
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
-    func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls {
-            let ext = url.pathExtension.lowercased()
-            if ["mmd", "mermaid", "md", "markdown"].contains(ext) {
-                AppState.shared.loadFile(url: url)
-                break
-            }
-        }
-    }
+struct MermaidDocument: FileDocument {
+    static var readableContentTypes: [UTType] = [.mermaidDiagram]
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // Check if launched with a file
-        if let fileURL = UserDefaults.standard.url(forKey: "launchFileURL") {
-            AppState.shared.loadFile(url: fileURL)
-            UserDefaults.standard.removeObject(forKey: "launchFileURL")
-        }
-    }
-}
+    var code: String
 
-class AppState: ObservableObject {
-    static let shared = AppState()
-
-    @Published var currentFileURL: URL?
-    @Published var mermaidCode: String = """
+    init(code: String = """
         flowchart TD
             A[Start] --> B{Is it working?}
             B -->|Yes| C[Great!]
             B -->|No| D[Debug]
             D --> B
             C --> E[End]
-        """
-
-    func loadFile(url: URL) {
-        currentFileURL = url
-        do {
-            let content = try String(contentsOf: url, encoding: .utf8)
-            if url.pathExtension.lowercased() == "md" {
-                mermaidCode = extractMermaidFromMarkdown(content)
-            } else {
-                mermaidCode = content
-            }
-        } catch {
-            print("Error loading file: \(error)")
-        }
+        """) {
+        self.code = code
     }
 
-    private func extractMermaidFromMarkdown(_ markdown: String) -> String {
-        let pattern = "```mermaid\\s*\\n([\\s\\S]*?)```"
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
-            return markdown
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents,
+              let string = String(data: data, encoding: .utf8)
+        else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        self.code = string
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let data = code.data(using: .utf8)!
+        return .init(regularFileWithContents: data)
+    }
+}
+
+@main
+struct MermaidViewerApp: App {
+    @StateObject private var shortcutManager = ShortcutManager()
+
+    var body: some Scene {
+        DocumentGroup(newDocument: MermaidDocument()) { config in
+            ContentView(document: config.$document, fileURL: config.fileURL)
+        }
+        .commands {
+            AppCommands(shortcutManager: shortcutManager)
         }
 
-        let range = NSRange(markdown.startIndex..., in: markdown)
-        let matches = regex.matches(in: markdown, options: [], range: range)
-
-        var mermaidBlocks: [String] = []
-        for match in matches {
-            if let codeRange = Range(match.range(at: 1), in: markdown) {
-                mermaidBlocks.append(String(markdown[codeRange]).trimmingCharacters(in: .whitespacesAndNewlines))
-            }
+        Settings {
+            SettingsView()
+                .environmentObject(shortcutManager)
         }
-
-        return mermaidBlocks.isEmpty ? markdown : mermaidBlocks.joined(separator: "\n\n---\n\n")
     }
 }
