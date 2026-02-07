@@ -113,25 +113,23 @@ jobs:
 
       - name: Build & Archive
         run: |
-          # Archive with automatic signing (development identity).
-          # The export step will re-sign with Developer ID.
+          # Archive without code signing — the export step will
+          # re-sign everything with Developer ID Application.
           xcodebuild archive \
             -scheme "$SCHEME" \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/MermaidViewer.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$API_KEY_PATH" \
-            -authenticationKeyID "${{ secrets.NOTARY_API_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}" \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
             MARKETING_VERSION="${{ steps.version.outputs.version }}" \
-            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
-            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
+            CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}"
 
       - name: Export archive
         run: |
-          # Generate ExportOptions.plist
-          cat > "$RUNNER_TEMP/ExportOptions.plist" << PLIST
+          # Generate ExportOptions.plist for Developer ID signing
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
@@ -142,8 +140,6 @@ jobs:
             <string>${{ secrets.APPLE_TEAM_ID }}</string>
             <key>signingCertificate</key>
             <string>Developer ID Application</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
           </dict>
           </plist>
           PLIST
