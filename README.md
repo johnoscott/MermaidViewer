@@ -29,7 +29,7 @@ Then launch the app once to register the Quick Look extension.
 
 ## Quick Look Preview
 
-Select a Mermaid file in Finder and press **Space**. A toolbar appears when you hover:
+Select a Mermaid file in Finder and press **Space**. A toolbar appears when you scroll to zoom or click and drag:
 
 | Control | Action |
 |---------|--------|
