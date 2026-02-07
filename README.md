@@ -86,6 +86,10 @@ Quick Look caches previews. Open Settings and click **Apply to Finder** to clear
 
 - macOS 13.0 (Ventura) or later
 
+## Like it? Star the repo
+
+If you find MermaidViewer useful, please consider [starring the repo](https://github.com/johnoscott/MermaidViewer) — it helps the project get accepted into the main [Homebrew](https://brew.sh) registry so more people can discover it with a simple `brew install mermaid-viewer`.
+
 ## Building from Source
 
 See [DEVELOPER.md](DEVELOPER.md) for build instructions and architecture details.
