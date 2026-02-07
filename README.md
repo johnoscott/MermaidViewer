@@ -26,7 +26,6 @@ Then launch the app once to register the Quick Look extension.
 
 - `.mmd` — Mermaid diagram files
 - `.mermaid` — Mermaid diagram files
-- `.md` / `.markdown` — Markdown files containing mermaid code blocks
 
 ## Quick Look Preview
 
@@ -83,7 +82,7 @@ Quick Look caches previews. Open Settings and click **Apply to Finder** to clear
 **Diagram not rendering:**
 - Verify your Mermaid syntax is valid
 - Enable **Debug Info** in Settings to see error details
-- Check the file has a supported extension (.mmd, .mermaid, .md)
+- Check the file has a supported extension (.mmd, .mermaid)
 
 ## Requirements
 
