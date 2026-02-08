@@ -157,6 +157,77 @@ jobs:
             -authenticationKeyID "${{ secrets.NOTARY_API_KEY_ID }}" \
             -authenticationKeyIssuerID "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}"
 
+      - name: Re-sign with extension entitlements
+        run: |
+          # Developer ID export doesn't inject com.apple.application-identifier
+          # and com.apple.developer.team-identifier, which are required for
+          # macOS to register Quick Look/Thumbnail extensions via pluginkit.
+          # Re-sign each component with the full entitlements.
+          TEAM_ID="${{ secrets.APPLE_TEAM_ID }}"
+          EXPORT="$RUNNER_TEMP/export/$APP_NAME"
+          PLUGINS="$EXPORT/Contents/PlugIns"
+
+          generate_entitlements() {
+            local bundle_id="$1"
+            local extra_keys="$2"
+            local file="$3"
+            cat > "$file" <<ENTITLEMENTS
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>com.apple.application-identifier</key>
+            <string>${TEAM_ID}.${bundle_id}</string>
+            <key>com.apple.developer.team-identifier</key>
+            <string>${TEAM_ID}</string>
+            <key>com.apple.security.app-sandbox</key>
+            <true/>
+            <key>com.apple.security.application-groups</key>
+            <array>
+              <string>group.com.roundrect.mermaidviewer</string>
+            </array>
+            <key>com.apple.security.files.user-selected.read-only</key>
+            <true/>${extra_keys}
+          </dict>
+          </plist>
+          ENTITLEMENTS
+          }
+
+          # Generate entitlements for each target
+          generate_entitlements "com.roundrect.mermaidviewer.quicklook" "" \
+            "$RUNNER_TEMP/ql-entitlements.plist"
+
+          generate_entitlements "com.roundrect.mermaidviewer.thumbnail" "" \
+            "$RUNNER_TEMP/thumb-entitlements.plist"
+
+          NETWORK_KEY=$'\n    <key>com.apple.security.network.client</key>\n    <true/>'
+          generate_entitlements "com.roundrect.mermaidviewer" "$NETWORK_KEY" \
+            "$RUNNER_TEMP/app-entitlements.plist"
+
+          # Re-sign extensions first (nested code must be signed before parent)
+          echo "==> Re-signing MermaidQuickLook.appex..."
+          codesign --force --sign "Developer ID Application" \
+            --options runtime \
+            --entitlements "$RUNNER_TEMP/ql-entitlements.plist" \
+            "$PLUGINS/MermaidQuickLook.appex"
+
+          echo "==> Re-signing MermaidThumbnail.appex..."
+          codesign --force --sign "Developer ID Application" \
+            --options runtime \
+            --entitlements "$RUNNER_TEMP/thumb-entitlements.plist" \
+            "$PLUGINS/MermaidThumbnail.appex"
+
+          echo "==> Re-signing MermaidViewer.app..."
+          codesign --force --sign "Developer ID Application" \
+            --options runtime \
+            --entitlements "$RUNNER_TEMP/app-entitlements.plist" \
+            "$EXPORT"
+
+          echo "==> Verifying entitlements..."
+          codesign -d --entitlements - "$PLUGINS/MermaidQuickLook.appex" 2>&1 | grep application-identifier
+          codesign -d --entitlements - "$PLUGINS/MermaidThumbnail.appex" 2>&1 | grep application-identifier
+          codesign -d --entitlements - "$EXPORT" 2>&1 | grep application-identifier
+
       - name: Verify code signing
         run: |
           echo "==> Checking code signature..."
