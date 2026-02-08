@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.1] - 2026-02-09
+
+### Fixed
+- Quick Look and Thumbnail extensions now register correctly in release builds installed via Homebrew/DMG
+- Added `com.apple.application-identifier` and `com.apple.developer.team-identifier` entitlements to all targets (required for pluginkit registration without provisioning profiles)
+
 ## [1.2.0] - 2026-02-08
 
 ### Added
