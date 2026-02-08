@@ -326,7 +326,7 @@ struct SettingsView: View {
                     Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
                         GridRow {
                             Text("Mermaid Viewer")
-                            Text("Version 1.0.0")
+                            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
                                 .foregroundColor(.secondary)
                         }
                         GridRow {
