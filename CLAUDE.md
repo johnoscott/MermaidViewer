@@ -63,6 +63,27 @@ Settings are shared via App Groups (`group.com.roundrect.mermaidviewer`) using `
 
 16x16 PNGs with transparency in `MermaidQuickLook/Resources/icons/`. 128x128 source files in `icons/source/`. Icon names use `icon-` prefix. Add new icons to the `iconNames` array in `MermaidRenderer.init()`.
 
+## Slash Commands
+
+Custom commands for common workflows. Use these in Claude Code with `/<command>`:
+
+| Command | Args | Description |
+|---------|------|-------------|
+| `/run` | — | Build and launch the app for local testing |
+| `/pr` | `[branch-name]` | Create a PR from current changes |
+| `/ci` | — | Check latest CI run status |
+| `/release` | `<version>` | Tag and release a version (e.g. `/release 1.3.0`) |
+| `/merge-and-release` | `<version>` | Merge current PR + release (e.g. `/merge-and-release 1.3.0`) |
+| `/homebrew-check` | — | Verify Homebrew cask is in sync with latest release |
+
+### Typical workflow
+
+1. Make changes
+2. `/run` — build and test locally
+3. `/pr feature/my-change` — create a PR
+4. `/merge-and-release 1.3.0` — merge, tag, CI builds + publishes to Homebrew
+5. `/homebrew-check` — verify cask updated
+
 ## Debugging Quick Look
 
 ```bash
