@@ -197,7 +197,8 @@ jobs:
           }
 
           # Save main app's original entitlements before re-signing extensions
-          codesign -d --entitlements "$RUNNER_TEMP/app-entitlements.xml" "$EXPORT" 2>/dev/null
+          # Use :- to get XML plist format (without colon, codesign outputs binary DER)
+          codesign -d --entitlements :- "$EXPORT" > "$RUNNER_TEMP/app-entitlements.plist" 2>/dev/null
 
           # Re-sign extensions with application-identifier
           echo "==> Re-signing MermaidQuickLook.appex..."
@@ -221,7 +222,7 @@ jobs:
           echo "==> Re-signing MermaidViewer.app (preserving original entitlements)..."
           codesign --force --sign "Developer ID Application" \
             --options runtime \
-            --entitlements "$RUNNER_TEMP/app-entitlements.xml" \
+            --entitlements "$RUNNER_TEMP/app-entitlements.plist" \
             "$EXPORT"
 
           echo "==> Verifying entitlements..."
