@@ -157,20 +157,23 @@ jobs:
             -authenticationKeyID "${{ secrets.NOTARY_API_KEY_ID }}" \
             -authenticationKeyIssuerID "${{ secrets.NOTARY_API_KEY_ISSUER_ID }}"
 
-      - name: Re-sign with extension entitlements
+      - name: Re-sign extensions with required entitlements
         run: |
           # Developer ID export doesn't inject com.apple.application-identifier
           # and com.apple.developer.team-identifier, which are required for
           # macOS to register Quick Look/Thumbnail extensions via pluginkit.
-          # Re-sign each component with the full entitlements.
+          #
+          # IMPORTANT: Only re-sign the extensions (appex), not the main app.
+          # com.apple.application-identifier is a restricted entitlement that
+          # requires a provisioning profile — AMFI blocks app launch without one.
+          # Extensions loaded by the system are handled differently.
           TEAM_ID="${{ secrets.APPLE_TEAM_ID }}"
           EXPORT="$RUNNER_TEMP/export/$APP_NAME"
           PLUGINS="$EXPORT/Contents/PlugIns"
 
-          generate_entitlements() {
+          generate_extension_entitlements() {
             local bundle_id="$1"
-            local extra_keys="$2"
-            local file="$3"
+            local file="$2"
             cat > "$file" <<ENTITLEMENTS
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -187,46 +190,45 @@ jobs:
               <string>group.com.roundrect.mermaidviewer</string>
             </array>
             <key>com.apple.security.files.user-selected.read-only</key>
-            <true/>${extra_keys}
+            <true/>
           </dict>
           </plist>
           ENTITLEMENTS
           }
 
-          # Generate entitlements for each target
-          generate_entitlements "com.roundrect.mermaidviewer.quicklook" "" \
-            "$RUNNER_TEMP/ql-entitlements.plist"
+          # Save main app's original entitlements before re-signing extensions
+          codesign -d --entitlements "$RUNNER_TEMP/app-entitlements.xml" "$EXPORT" 2>/dev/null
 
-          generate_entitlements "com.roundrect.mermaidviewer.thumbnail" "" \
-            "$RUNNER_TEMP/thumb-entitlements.plist"
-
-          NETWORK_KEY=$'\n    <key>com.apple.security.network.client</key>\n    <true/>'
-          generate_entitlements "com.roundrect.mermaidviewer" "$NETWORK_KEY" \
-            "$RUNNER_TEMP/app-entitlements.plist"
-
-          # Re-sign extensions first (nested code must be signed before parent)
+          # Re-sign extensions with application-identifier
           echo "==> Re-signing MermaidQuickLook.appex..."
+          generate_extension_entitlements "com.roundrect.mermaidviewer.quicklook" \
+            "$RUNNER_TEMP/ql-entitlements.plist"
           codesign --force --sign "Developer ID Application" \
             --options runtime \
             --entitlements "$RUNNER_TEMP/ql-entitlements.plist" \
             "$PLUGINS/MermaidQuickLook.appex"
 
           echo "==> Re-signing MermaidThumbnail.appex..."
+          generate_extension_entitlements "com.roundrect.mermaidviewer.thumbnail" \
+            "$RUNNER_TEMP/thumb-entitlements.plist"
           codesign --force --sign "Developer ID Application" \
             --options runtime \
             --entitlements "$RUNNER_TEMP/thumb-entitlements.plist" \
             "$PLUGINS/MermaidThumbnail.appex"
 
-          echo "==> Re-signing MermaidViewer.app..."
+          # Re-sign main app with its ORIGINAL entitlements
+          # (nested code change invalidates parent signature)
+          echo "==> Re-signing MermaidViewer.app (preserving original entitlements)..."
           codesign --force --sign "Developer ID Application" \
             --options runtime \
-            --entitlements "$RUNNER_TEMP/app-entitlements.plist" \
+            --entitlements "$RUNNER_TEMP/app-entitlements.xml" \
             "$EXPORT"
 
           echo "==> Verifying entitlements..."
           codesign -d --entitlements - "$PLUGINS/MermaidQuickLook.appex" 2>&1 | grep application-identifier
           codesign -d --entitlements - "$PLUGINS/MermaidThumbnail.appex" 2>&1 | grep application-identifier
-          codesign -d --entitlements - "$EXPORT" 2>&1 | grep application-identifier
+          echo "==> Main app entitlements (should NOT have application-identifier):"
+          codesign -d --entitlements - "$EXPORT" 2>&1
 
       - name: Verify code signing
         run: |
